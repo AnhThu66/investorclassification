@@ -153,4 +153,3 @@ if st.button("📊 XEM BÁO CÁO KẾT QUẢ", type="primary", use_container_wid
             st.markdown(f"- {bias}")
     else:
         st.info("Không phát hiện thiên kiến hành vi rõ rệt (không có câu nào bạn đánh giá ở mức 4 hoặc 5).")
-```
