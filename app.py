@@ -1,114 +1,156 @@
 import streamlit as st
 
-# Thiết lập giao diện
-st.set_page_config(page_title="Phân loại Nhà đầu tư & Hành vi", layout="wide")
+# ==========================================
+# CƠ SỞ DỮ LIỆU TỪ TÀI LIỆU NGUỒN
+# ==========================================
 
-st.title("Phân loại Loại hình Nhà đầu tư & Lệch lạc Hành vi 📈")
-st.write("Dựa trên nghiên cứu về Tài chính hành vi (Behavioral Finance)")
+INVESTOR_TYPES = {
+    'A': 'Nhà đầu tư thận trọng (The Preserver)',
+    'B': 'Nhà đầu tư mạo hiểm (The Accumulator)',
+    'C': 'Nhà đầu tư độc lập (The Independent)',
+    'D': 'Nhà đầu tư theo trào lưu (The Follower)'
+}
 
-# --- PHẦN 1: NHẬN DIỆN LOẠI NHÀ ĐẦU TƯ ---
+RECOMMENDATIONS = {
+    'A': {
+        'Đặc điểm': 'Ưu tiên sự an toàn và sợ mất mát hơn là tìm kiếm lợi nhuận.',
+        'Chiến lược tư vấn': 'Tập trung vào các mục tiêu lớn (big-picture) như bảo vệ tài sản cho thế hệ mai sau thay vì đi sâu vào các chi tiết kỹ thuật như độ lệch chuẩn hay tỷ lệ Sharpe.',
+        'Phân bổ tài sản': 'Nên thiết lập một danh mục thận trọng hơn so với mức trung bình để không hoảng sợ bán tháo khi thị trường sụt giảm.',
+        'Tiếp cận': 'Cần sự kiên nhẫn và huấn luyện về hành vi để giúp vượt qua sự "đóng băng" trước các quyết định thay đổi danh mục.'
+    },
+    'B': {
+        'Đặc điểm': 'Năng nổ nhất, luôn muốn kiểm soát quá trình đầu tư và tin rằng mình có thể chiến thắng thị trường.',
+        'Chiến lược tư vấn': 'Nhà tư vấn cần giữ vai trò lãnh đạo quyết đoán, chứng minh tác động của quyết định đến lối sống dài hạn để kiềm chế sự tự tin quá mức. Nếu để họ chi phối, danh mục sẽ quá rủi ro do sự lạc quan thái quá.',
+        'Quản lý rủi ro': 'Cần theo dõi chặt chẽ việc chi tiêu và xu hướng giao dịch quá mức, điều có thể làm giảm hiệu suất dài hạn.'
+    },
+    'C': {
+        'Đặc điểm': 'Có tư duy phân tích, thích tự nghiên cứu nhưng đôi khi quá tin vào bản thân.',
+        'Chiến lược tư vấn': 'Nhà tư vấn nên đóng vai trò là một người phản biện (sounding board) để thảo luận một cách khách quan các ý tưởng của họ.',
+        'Tiếp cận': 'Sử dụng các cuộc thảo luận giáo dục định kỳ để giới thiệu các khái niệm mới, giúp nhận ra thông tin trái chiều đã bỏ qua do thiên kiến xác nhận.',
+        'Phân bổ tài sản': 'Cần một danh mục có tính kỷ luật để ngăn thực hiện các khoản đầu tư ngoài kế hoạch làm thay đổi rủi ro tổng thể.'
+    },
+    'D': {
+        'Đặc điểm': 'Thường thụ động, thiếu ý tưởng riêng và dễ bị ảnh hưởng bởi các trào lưu mới nhất.',
+        'Chiến lược tư vấn': 'Tập trung vào giáo dục đầu tư, đặc biệt là lợi ích của việc đa dạng hóa và tuân thủ kế hoạch dài hạn.',
+        'Kiểm soát rủi ro': 'Cần thận trọng, không nên gợi ý quá nhiều ý tưởng "hot" vì họ có xu hướng đồng ý với tất cả mà không hiểu rõ rủi ro.',
+        'Phân bổ tài sản': 'Cần xác định lại mức chấp nhận rủi ro thực tế, vì họ thường đánh giá cao quá mức khả năng chịu đựng của mình khi thấy người khác kiếm được tiền.'
+    }
+}
+
+BIASES_MAP = {
+    11: "Lệch lạc neo quyết định (Anchoring)",
+    12: "Tâm lý sợ thua lỗ (Loss Aversion)",
+    13: "Lệch lạc thiếu kiểm soát (Self-control)",
+    14: "Tâm lý hối tiếc (Regret)",
+    15: "Hiệu ứng sở hữu (Endowment)",
+    16: "Lệch lạc sẵn có (Availability)",
+    17: "Thành kiến tự quy kết (Self-attribution)",
+    18: "Thành kiến giữ nguyên hiện trạng (Status quo)",
+    19: "Quá tự tin (Overconfidence)",
+    20: "Lệch lạc khung tâm lý (Framing)",
+    21: "Thành kiến bảo thủ (Conservatism)",
+    22: "Thành kiến yêu thích (Affinity)",
+    23: "Hạch toán tâm trí (Mental Accounting)",
+    24: "Thành kiến nhận thức muộn (Hindsight)",
+    25: "Thành kiến đại diện (Representativeness)",
+    26: "Thành kiến kết quả (Outcome)",
+    27: "Bất hòa nhận thức (Cognitive Dissonance)",
+    28: "Ảo tưởng kiểm soát (Illusion of Control)",
+    29: "Thành kiến xác nhận (Confirmation)",
+    30: "Lệch lạc gần đây (Recency)"
+}
+
+# ==========================================
+# HÀM XỬ LÝ LOGIC
+# ==========================================
+
+def classify_investor(answers):
+    counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
+    for ans in answers:
+        counts[ans] += 1
+    
+    # Xét xem có nhóm nào đạt >= 5 không
+    for inv_type, count in counts.items():
+        if count >= 5:
+            return inv_type
+            
+    # Nếu không có nhóm nào >= 5, chọn nhóm xuất hiện nhiều nhất
+    return max(counts, key=counts.get)
+
+def identify_biases(answers_dict):
+    detected = []
+    for q_num, score in answers_dict.items():
+        # Điểm >= 4 (Đồng ý/Hoàn toàn đồng ý) là mắc thiên kiến
+        if score >= 4:
+            detected.append(BIASES_MAP[q_num])
+    return detected
+
+# ==========================================
+# GIAO DIỆN STREAMLIT
+# ==========================================
+
+st.set_page_config(page_title="Phân loại Nhà Đầu Tư", layout="centered")
+
+st.title("Ứng dụng Phân loại Nhà đầu tư & Nhận diện Thiên kiến")
+st.markdown("---")
+
+# PHẦN 1: 10 CÂU HỎI PHÂN LOẠI
 st.header("Phần 1: Nhận diện loại nhà đầu tư")
-st.info("Hãy chọn phương án mô tả đúng nhất về bạn trong 10 câu hỏi sau.")
+st.write("Vui lòng chọn đáp án (A, B, C hoặc D) phù hợp nhất với bạn cho 10 câu hỏi dưới đây:")
 
-questions = [
-    "1. Vai trò chính của Anh/Chị trong việc quản lý tiền bạc là:",
-    "2. Khi nói đến các vấn đề tài chính, Anh/Chị đồng ý nhất với nhận định nào?",
-    "3. Khi quyết định đầu tư, Anh/Chị tin tưởng vào lời khuyên của:",
-    "4. Khi thị trường đi lên, Anh/Chị cảm thấy:",
-    "5. Trong lĩnh vực tài chính, từ nào mô tả đúng nhất về Anh/Chị?",
-    "6. Về việc tuân thủ một kế hoạch quản lý tiền bạc:",
-    "7. Anh/Chị cảm thấy tự tin nhất về tiền bạc khi:",
-    "8. Khi một người bạn gợi ý một ý tưởng đầu tư 'chắc ăn':",
-    "9. Biến động ngắn hạn trong danh mục khiến Anh/Chị:",
-    "10. Nếu tham gia một trận đá bóng, Anh/Chị đóng vai trò nào?"
-]
+answers_part1 = []
+for i in range(1, 11):
+    ans = st.radio(
+        f"Câu {i}:", 
+        options=['A', 'B', 'C', 'D'], 
+        horizontal=True,
+        key=f"p1_q{i}"
+    )
+    answers_part1.append(ans)
 
-options = [
-    ["Người bảo vệ tài sản (A)", "Tích cực giao dịch (B)", "Nghiên cứu kỹ lưỡng (C)", "Nghe theo lời khuyên (D)"],
-    ["Mất tiền là kết quả tồi tệ nhất (A)", "Hành động nhanh để kiếm cơ hội (B)", "Dành thời gian nghiên cứu kỹ (C)", "Không trực tiếp giám sát tiền (D)"],
-    ["Kỷ luật tự giác (A)", "Bản năng của mình (B)", "Kết quả nghiên cứu riêng (C)", "Một người khác (D)"],
-    ["Nhẹ nhõm (A)", "Phấn khích (B)", "Bình tĩnh và lý trí (C)", "Vui vì làm theo lời khuyên (D)"],
-    ["Người bảo vệ (Guardian) (A)", "Người giao dịch (Trader) (B)", "Người nghiên cứu (Researcher) (C)", "Người nghe theo lời khuyên (D)"],
-    ["Làm nếu giúp bảo vệ tài sản (A)", "Kế hoạch không quá quan trọng (B)", "Kế hoạch tốt nhưng cần suy nghĩ riêng (C)", "Nghe theo lời khuyên người khác (D)"],
-    ["Ngủ ngon vì tài sản an toàn (A)", "Đầu tư tiềm năng tăng giá cao (B)", "Tự đưa ra quyết định (C)", "Đầu tư theo đám đông (D)"],
-    ["Thường tránh những loại này (A)", "Yêu thích và hành động ngay (B)", "Tự nghiên cứu rồi mới quyết định (C)", "Hỏi ý kiến người khác (D)"],
-    ["Hoảng sợ và muốn bán (A)", "Thấy cơ hội và muốn mua (B)", "Bình tĩnh, kiểm soát được (C)", "Muốn gọi hỏi xem tiền thế nào (D)"],
-    ["Cầu thủ phòng ngự (A)", "Cầu thủ tấn công (B)", "Chiến lược gia/Huấn luyện viên (C)", "Người hâm mộ (D)"]
-]
+st.markdown("---")
 
-responses = []
-for i in range(len(questions)):
-    choice = st.selectbox(questions[i], options[i], key=f"q{i}")
-    responses.append(choice[-2]) # Lấy ký tự A, B, C hoặc D
+# PHẦN 2: 20 CÂU HỎI THIÊN KIẾN (Thang Likert)
+st.header("Phần 2: Các lệch lạc hành vi của nhà đầu tư")
+st.write("Đánh giá mức độ đồng ý của bạn với các nhận định dưới đây (1: Hoàn toàn không đồng ý -> 5: Hoàn toàn đồng ý):")
 
-# --- PHẦN 2: LỆCH LẠC HÀNH VI ---
-st.divider()
-st.header("Phần 2: Nhận diện lệch lạc hành vi")
-st.write("Bạn có đồng ý với các nhận định sau không?")
+answers_part2 = {}
+for i in range(11, 31):
+    score = st.slider(
+        f"Câu {i} - {BIASES_MAP[i].split('(').strip()}:", 
+        min_value=1, 
+        max_value=5, 
+        value=3, # Mặc định là mức 3 (Bình thường)
+        key=f"p2_q{i}"
+    )
+    answers_part2[i] = score
 
-bias_questions = [
-    "11. Khi định bán một khoản đầu tư, giá tôi đã mua là yếu tố lớn tôi cân nhắc.",
-    "12. Nỗi đau mất tiền mạnh gấp ít nhất 2 lần niềm vui kiếm được tiền.",
-    "13. Tôi sẽ mua những thứ mình muốn ngay cả khi chúng không phải lựa chọn tài chính tốt nhất.",
-    "14. Những quyết định tài chính sai lầm trong quá khứ khiến tôi thay đổi quyết định hiện tại.",
-    "17. Tôi thấy các đầu tư thành công là do tôi, còn thất bại là do lời khuyên người khác.",
-    "19. Tôi tin rằng kiến thức đầu tư của mình trên mức trung bình.",
-    "29. Khi đầu tư không tốt, tôi tìm thông tin để xác nhận rằng mình đã quyết định đúng."
-]
-bias_types = ["Anchoring (Neo quyết định)", "Loss Aversion (Sợ thua lỗ)", "Self-control (Thiếu kiểm soát)", "Regret (Hối tiếc)", "Self-attribution (Tự quy kết)", "Overconfidence (Quá tự tin)", "Confirmation (Xác nhận)"]
+st.markdown("---")
 
-bias_results = []
-for i in range(len(bias_questions)):
-    agree = st.checkbox(bias_questions[i])
-    if agree:
-        bias_results.append(bias_types[i])
-
-# --- XỬ LÝ KẾT QUẢ ---
-if st.button("XEM KẾT QUẢ PHÂN LOẠI"):
-    st.divider()
+# NÚT XỬ LÝ VÀ HIỂN THỊ KẾT QUẢ
+if st.button("📊 XEM BÁO CÁO KẾT QUẢ", type="primary", use_container_width=True):
     
-    # Tính toán loại nhà đầu tư
-    count_A = responses.count('A')
-    count_B = responses.count('B')
-    count_C = responses.count('C')
-    count_D = responses.count('D')
+    # 1. Phân loại nhà đầu tư
+    investor_code = classify_investor(answers_part1)
+    investor_name = INVESTOR_TYPES[investor_code]
     
-    # Xác định nhóm
-    if count_A >= 5:
-        loai = "Nhà đầu tư Thận trọng (The Preserver)"
-        kn = """
-        - **Chiến lược:** Tập trung bảo vệ tài sản cho thế hệ mai sau thay vì các chỉ số kỹ thuật[cite: 4, 5].
-        - **Tiếp cận:** Cần sự kiên nhẫn và huấn luyện hành vi để vượt qua sự 'đóng băng' quyết định[cite: 6].
-        """
-    elif count_B >= 5:
-        loai = "Nhà đầu tư Mạo hiểm (The Accumulator)"
-        kn = """
-        - **Chiến lược:** Nhà tư vấn cần giữ vai trò lãnh đạo quyết đoán để kiềm chế sự lạc quan thái quá[cite: 9, 10].
-        - **Quản lý rủi ro:** Theo dõi chặt chẽ việc chi tiêu và xu hướng giao dịch quá mức[cite: 12].
-        """
-    elif count_C >= 5:
-        loai = "Nhà đầu tư Độc lập (The Independent)"
-        kn = """
-        - **Chiến lược:** Nhà tư vấn đóng vai trò người phản biện khách quan cho các ý tưởng của bạn[cite: 15].
-        - **Tiếp cận:** Cần kỷ luật để tránh các khoản đầu tư ngoài kế hoạch[cite: 17].
-        """
-    elif count_D >= 5:
-        loai = "Nhà đầu tư Theo trào lưu (The Follower)"
-        kn = """
-        - **Chiến lược:** Tập trung giáo dục về đa dạng hóa và tuân thủ kế hoạch dài hạn[cite: 20].
-        - **Kiểm soát rủi ro:** Xác định lại mức chấp nhận rủi ro thực tế thay vì chạy theo đám đông[cite: 22].
-        """
+    st.subheader("🎯 KẾT QUẢ PHÂN LOẠI")
+    st.success(f"**Bạn thuộc nhóm: {investor_name}**")
+    
+    # 2. Khuyến nghị
+    st.subheader("💡 KHUYẾN NGHỊ ĐẦU TƯ TƯƠNG ỨNG")
+    recs = RECOMMENDATIONS[investor_code]
+    for key, val in recs.items():
+        st.markdown(f"- **{key}:** {val}")
+        
+    # 3. Thiên kiến
+    st.subheader("🧠 CÁC THIÊN KIẾN HÀNH VI NHẬN DIỆN ĐƯỢC")
+    biases = identify_biases(answers_part2)
+    
+    if biases:
+        st.warning("Dựa trên các câu trả lời đạt mức 4-5, bạn có khuynh hướng mắc các thiên kiến sau:")
+        for bias in biases:
+            st.markdown(f"- {bias}")
     else:
-        loai = "Nhà đầu tư Hỗn hợp"
-        kn = "Bạn có đặc điểm của nhiều nhóm. Hãy tham vấn chuyên gia để có danh mục tối ưu."
-
-    # Hiển thị kết quả
-    st.subheader(f"Kết quả: {loai}")
-    st.markdown(kn)
-    
-    if bias_results:
-        st.warning("⚠️ Cảnh báo Thiên kiến (Biases) bạn đang gặp phải:")
-        for b in bias_results:
-            st.write(f"- {b}")
-    else:
-        st.success("Bạn có tư duy khá khách quan và ít bị ảnh hưởng bởi thiên kiến hành vi.")
+        st.info("Không phát hiện thiên kiến hành vi rõ rệt (không có câu nào bạn đánh giá ở mức 4 hoặc 5).")
+```
